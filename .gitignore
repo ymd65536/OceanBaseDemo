@@ -11,3 +11,7 @@ include
 
 # macOS
 .DS_Store
+
+agent_state.db
+
+.venv

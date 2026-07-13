@@ -1,3 +1,10 @@
+#!/usr/bin/env -S uv run
+# /// script
+# dependencies = [
+#   "pyseekdb",
+# ]
+# ///
+
 import pyseekdb
 
 client = pyseekdb.Client(path="./agent_state.db")
