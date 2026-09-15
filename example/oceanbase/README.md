@@ -5,13 +5,31 @@
 
 - [OceanBase Community Editionクイックスタート](https://jp.oceanbase.com/docs/common-oceanbase-database-1000000000011372)
 
+## 動作確認
+
+動作確認で利用した環境は以下のとおりです。
+
+```text
+OceanBase CE 4.4.2.1
+MySQL compatibility: 5.7.25-OceanBase_CE-v4.4.2.1
+GitHub Codespaces: 4 cores / 16 GiB
+MODE=SLIM
+```
+
+## 事前準備
+
+```bash
+mkdir -p /tmp/oceanbase-data
+df -h /tmp/oceanbase-data
+```
+
 ## dockerでの起動
 
 ```bash
 docker run -p 2881:2881 --name oceanbase-ce -e MODE=mini -d oceanbase/oceanbase-ce
 ```
 
-小さく起動する場合は以下のコマンドを実行します。
+ディスクマウントして起動する場合は以下のとおりです。
 
 ```bash
 docker run \
@@ -19,6 +37,45 @@ docker run \
   --ulimit nofile=65535:65535 \
   -p 2881:2881 \
   -e MODE=mini \
+  -v /tmp/oceanbase-store:/root/ob/observer/store \
+  -d oceanbase/oceanbase-ce
+```
+
+環境変数を使って起動する方法は以下のとおりです。
+
+```bash
+docker run \
+  --name oceanbase-ce \
+  --ulimit nofile=65535:65535 \
+  -p 2881:2881 \
+  -e MODE=MINI \
+  -e OB_MEMORY_LIMIT=4G \
+  -e OB_SYSTEM_MEMORY=1G \
+  -e OB_DATAFILE_SIZE=1G \
+  -e OB_LOG_DISK_SIZE=1G \
+  -d oceanbase/oceanbase-ce
+```
+
+SLIMモードの起動は以下のとおりです。
+
+```bash
+docker run \
+  --name oceanbase-ce \
+  --ulimit nofile=65535:65535 \
+  -p 2881:2881 \
+  -e MODE=SLIM \
+  -d oceanbase/oceanbase-ce
+```
+
+SLIMモードでボリュームマウントする場合は以下のとおりです。（推奨）
+
+```bash
+docker run \
+  --name oceanbase-ce \
+  --ulimit nofile=65535:65535 \
+  -p 2881:2881 \
+  -e MODE=SLIM \
+  -v /tmp/oceanbase-volume:/mnt/oceanbase \
   -d oceanbase/oceanbase-ce
 ```
 
@@ -69,6 +126,12 @@ docker exec -it oceanbase-ce bash
 
 ```bash
 obd cluster edit-config obcluster
+```
+
+設定を確認します。
+
+```bash
+obd cluster start obcluster
 ```
 
 ## 片付け
