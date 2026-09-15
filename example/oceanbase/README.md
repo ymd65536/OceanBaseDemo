@@ -1,3 +1,7 @@
+# GitHub CodespacesでOceanBase CEをすぐに試せるDisposable Playground
+
+Codespaceを作成するとOceanBase CEがSLIMモードで自動構築され、SQL接続可能な状態までセットアップされます。
+
 ## OceanBase Community Edition
 
 小さく始めるならOSS版が良いだろう。Prometheusも対応しているみたいなので可視化もバッチリ。
@@ -5,7 +9,7 @@
 
 - [OceanBase Community Editionクイックスタート](https://jp.oceanbase.com/docs/common-oceanbase-database-1000000000011372)
 
-## 動作確認
+## 動作環境
 
 動作確認で利用した環境は以下のとおりです。
 
@@ -16,12 +20,7 @@ GitHub Codespaces: 4 cores / 16 GiB
 MODE=SLIM
 ```
 
-## 事前準備
-
-```bash
-mkdir -p /tmp/oceanbase-data
-df -h /tmp/oceanbase-data
-```
+## 以下、手動で起動したときの手順とメモ
 
 ## dockerでの起動
 
@@ -83,6 +82,15 @@ docker run \
 
 ```bash
 docker exec -it oceanbase-ce obclient -h127.0.0.1 -P2881 -uroot
+```
+
+## 動作確認
+
+動作確認のためにSQLを実行します。
+
+```sql
+SELECT VERSION();
+SELECT 1;
 ```
 
 ## トラブルシューティング
