@@ -11,5 +11,5 @@
       "moby": false
     }
   },
-  "postCreateCommand": "bash .devcontainer/OceanBaseLab/scripts/setup-oceanbase.sh"
+  "postCreateCommand": "bash .devcontainer/scripts/setup-oceanbase.sh"
 }
