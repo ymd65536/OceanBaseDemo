@@ -118,7 +118,7 @@ docker exec -it oceanbase-ce bash
 ## クラスターの表示
 
 ```bash
-obd cluster display obcluster
+obd cluster display demo
 ```
 
 ## 設定を確認と修正
