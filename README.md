@@ -310,27 +310,7 @@ uv run python experiments/mysql_connector_compat.py \
    --json experiments/results/mysql8.json
 ```
 
-記録済みのOceanBaseとMySQL 8.xの結果だけから比較表を再生成します。
-
-```bash
-uv run python experiments/compare_results.py \
-   experiments/results/mysql_connector_compat.json \
-   experiments/results/mysql8.json \
-   --output experiments/results/comparison.md
-```
-
-実測結果は [experiments/results/comparison.md](experiments/results/comparison.md) に保存しています。
-
-| Case | OceanBase CE 4.4.2.1 | MySQL 8.0.46 |
-|---|---|---|
-| C Extension / default | FAIL / - / - | PASS / PASS / PASS |
-| Pure Python / default | PASS / PASS / PASS | PASS / PASS / PASS |
-| C Extension / explicit | FAIL / - / - | PASS / PASS / PASS |
-| Pure Python / explicit | PASS / PASS / PASS | PASS / PASS / PASS |
-
-各セルは`Connect / SELECT 1 / CRUD`です。このcontrol experimentではMySQL 8.0.46の4ケースがすべてPASSしました。これは同じclient環境でDB serverを変えると結果が異なるという観測事実ですが、OceanBase側またはmysql-connector-python側のbugを断定するものではありません。
-
-control targetを停止するには次を実行します。データvolumeも削除して初期状態へ戻す場合だけ`--volumes`を追加してください。
+MySQL 8.x control targetを停止するには次を実行します。データvolumeも削除して初期状態へ戻す場合だけ`--volumes`を追加してください。
 
 ```bash
 docker compose \
@@ -338,6 +318,70 @@ docker compose \
    -f experiments/mysql8/compose.yaml \
    down
 ```
+
+### MySQL 5.7 Control Experiment
+
+本家MySQL 5.7との比較には、公式イメージの固定タグ`mysql:5.7.44`を使用します。5.7.44はMySQL 5.7系列の最終リリースであり、タグが提供するLinux amd64イメージがこのCodespaceのx86_64環境で利用可能なことを確認しています。既存のOceanBase 2881番とMySQL 8.x 3307番を変更せず、MySQL 5.7 control targetは3308番を使用します。
+
+ローカルcredentialファイルを作成し、値を必要に応じて変更します。`experiments/mysql57/.env`は`.gitignore`対象であり、commitしません。
+
+```bash
+cp experiments/mysql57/.env.example experiments/mysql57/.env
+```
+
+MySQL 5.7.44と専用database/userを起動します。
+
+```bash
+docker compose \
+   --env-file experiments/mysql57/.env \
+   -f experiments/mysql57/compose.yaml \
+   up -d --wait
+```
+
+同じ環境変数を現在のシェルへ読み込み、既存runnerで4ケースを実行します。
+
+```bash
+set -a
+source experiments/mysql57/.env
+set +a
+
+uv run python experiments/mysql_connector_compat.py \
+   --target-name mysql57 \
+   --env-prefix MYSQL57 \
+   --json experiments/results/mysql57.json
+```
+
+MySQL 5.7 control targetを停止するには次を実行します。
+
+```bash
+docker compose \
+   --env-file experiments/mysql57/.env \
+   -f experiments/mysql57/compose.yaml \
+   down
+```
+
+### Control Experiment Comparison
+
+記録済みの3ターゲットのJSONだけから比較表を再生成します。入力順が比較表の列順になります。
+
+```bash
+uv run python experiments/compare_results.py \
+   experiments/results/mysql57.json \
+   experiments/results/mysql8.json \
+   experiments/results/mysql_connector_compat.json \
+   --output experiments/results/comparison.md
+```
+
+実測結果と比較条件は [experiments/results/comparison.md](experiments/results/comparison.md) に保存しています。
+
+| Case | MySQL 5.7.44 | MySQL 8.0.46 | OceanBase CE 4.4.2.1 |
+|---|---|---|---|
+| C Extension / default | PASS / PASS / PASS | PASS / PASS / PASS | FAIL / - / - |
+| Pure Python / default | PASS / PASS / PASS | PASS / PASS / PASS | PASS / PASS / PASS |
+| C Extension / explicit | PASS / PASS / PASS | PASS / PASS / PASS | FAIL / - / - |
+| Pure Python / explicit | PASS / PASS / PASS | PASS / PASS / PASS | PASS / PASS / PASS |
+
+各セルは`Connect / SELECT 1 / CRUD`です。同じPython 3.12.14、mysql-connector-python 26.7.0、experiment runnerで、MySQL 5.7.44とMySQL 8.0.46は4ケースすべてPASSしました。mysql-connector-python C Extensionの失敗は、このMySQL 5.7 control targetでは再現しませんでした。これは比較で観測された事実であり、OceanBase、mysql-connector-python、charset ID 45、MySQL 5.7 protocolのいずれかを原因またはbugと断定するものではありません。
 
 使い方はローカル/ クラウドのどちらかで利用できる。クイックスタートはローカル版
 

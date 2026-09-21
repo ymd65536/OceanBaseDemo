@@ -31,12 +31,12 @@ def render_markdown(reports):
     lines = [
         "# MySQL Connector Compatibility Comparison",
         "",
-        "This table contains only recorded experiment results. No missing target or case is inferred.",
+        "This report contains recorded experiment facts only. No missing result or root cause is inferred.",
         "",
         "## Environments",
         "",
-        "| Target | Server version | Connector version | Python version | Evidence |",
-        "|---|---|---|---|---|",
+        "| Target | Server version | Connector version | Python version | Platform | Experiment runner | Evidence |",
+        "|---|---|---|---|---|---|---|",
     ]
     for path, report in reports:
         environment = report["environment"]
@@ -44,7 +44,9 @@ def render_markdown(reports):
         python_version = environment["python_version"].splitlines()[0]
         lines.append(
             f"| {target['name']} | {server_version(report)} | "
-            f"{environment['connector_version']} | {python_version} | `{path.as_posix()}` |"
+            f"{environment['connector_version']} | {python_version} | "
+            f"{environment['platform']} | `experiments/mysql_connector_compat.py` | "
+            f"`{path.as_posix()}` |"
         )
 
     ordered_cases = []
@@ -56,7 +58,7 @@ def render_markdown(reports):
     lines.extend(
         [
             "",
-            "## Results",
+            "## Recorded Results (FACT)",
             "",
             "Each result is `Connect / SELECT 1 / CRUD`.",
             "",
