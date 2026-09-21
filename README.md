@@ -87,6 +87,31 @@ uv run python example/dashboard/dashboard.py
 
 接続に失敗した場合は、接続状態を `Connection error` として表示し、エラー内容を画面に表示します。DashboardのSQLは固定クエリのみで、ユーザー入力をSQLへ連結しません。
 
+## JupyterLabでデータ分析
+
+JupyterLabとNotebook用の依存関係をセットアップします。
+
+```bash
+uv sync
+```
+
+Dashboardと同じ環境変数を設定して、JupyterLabを `0.0.0.0:8888` で起動します。
+
+```bash
+export OCEANBASE_HOST=127.0.0.1
+export OCEANBASE_PORT=2881
+export OCEANBASE_USER='root@sys'
+export OCEANBASE_PASSWORD=''
+export OCEANBASE_DATABASE=test
+
+uv run jupyter lab \
+   --ip=0.0.0.0 \
+   --port=8888 \
+   --no-browser
+```
+
+CodespacesのPortsタブでポート `8888` を開き、表示されたJupyterLabのURLへアクセスしてください。Notebook一覧から `notebooks/oceanbase_quickstart.ipynb` を開き、上から順番にセルを実行します。NotebookではOceanBaseへの接続、`SELECT VERSION()`、`users` の取得、pandasによる集計、matplotlibによる可視化を確認できます。
+
 使い方はローカル/ クラウドのどちらかで利用できる。クイックスタートはローカル版
 
 - [quick start](https://jp.oceanbase.com/docs/common-oceanbase-database-1000000000011372)

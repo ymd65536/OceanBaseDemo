@@ -6,7 +6,7 @@
     "memory": "16gb",
     "storage": "32gb"
   },
-  "forwardPorts": [8000],
+  "forwardPorts": [8000, 8888],
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "moby": false
