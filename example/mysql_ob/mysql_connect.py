@@ -1,6 +1,7 @@
-import mysql.connector
+import pymysql
+from pymysql.cursors import DictCursor
 
-source = mysql.connector.connect(
+source = pymysql.connect(
     host="localhost",
     port=3306,
     user="root",
@@ -8,7 +9,7 @@ source = mysql.connector.connect(
     database="source_db",
 )
 
-target = mysql.connector.connect(
+target = pymysql.connect(
     host="localhost",
     port=2881,
     user="root@sys",
@@ -16,7 +17,7 @@ target = mysql.connector.connect(
     database="test",
 )
 
-src = source.cursor(dictionary=True)
+src = source.cursor(DictCursor)
 dst = target.cursor()
 
 src.execute("SELECT id, name, created_at FROM users")
