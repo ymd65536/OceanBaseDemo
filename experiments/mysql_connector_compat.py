@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import sys
 import traceback
 from datetime import datetime
@@ -20,24 +21,26 @@ SELECT
 """
 
 
-def required_environment():
-    names = (
-        "OCEANBASE_HOST",
-        "OCEANBASE_PORT",
-        "OCEANBASE_USER",
-        "OCEANBASE_PASSWORD",
-        "OCEANBASE_DATABASE",
-    )
-    missing = [name for name in names if name not in os.environ]
+def required_environment(prefix):
+    if not re.fullmatch(r"[A-Z][A-Z0-9_]*", prefix):
+        raise ValueError(
+            "Environment prefix must contain only uppercase letters, digits, and underscores"
+        )
+
+    names = {
+        key: f"{prefix}_{key}"
+        for key in ("HOST", "PORT", "USER", "PASSWORD", "DATABASE")
+    }
+    missing = [name for name in names.values() if name not in os.environ]
     if missing:
         raise RuntimeError(f"Missing environment variables: {', '.join(missing)}")
 
     return {
-        "host": os.environ["OCEANBASE_HOST"],
-        "port": int(os.environ["OCEANBASE_PORT"]),
-        "user": os.environ["OCEANBASE_USER"],
-        "password": os.environ["OCEANBASE_PASSWORD"],
-        "database": os.environ["OCEANBASE_DATABASE"],
+        "host": os.environ[names["HOST"]],
+        "port": int(os.environ[names["PORT"]]),
+        "user": os.environ[names["USER"]],
+        "password": os.environ[names["PASSWORD"]],
+        "database": os.environ[names["DATABASE"]],
     }
 
 
@@ -203,6 +206,7 @@ def skipped_case(name, use_pure, discovery):
 def print_report(report):
     print("MySQL Connector Compatibility Experiment")
     print("=" * 40)
+    print(f"Target: {report['environment']['target']['name']}")
     print(f"mysql-connector-python: {report['environment']['connector_version']}")
     print(f"Python: {report['environment']['python_version']}")
     print(f"Platform: {report['environment']['platform']}")
@@ -210,7 +214,7 @@ def print_report(report):
 
     discovery = report["explicit_settings_discovery"]
     if discovery["success"]:
-        print("Explicit settings discovered from OceanBase session and SHOW COLLATION:")
+        print("Explicit settings discovered from target session and SHOW COLLATION:")
         print(f"  charset:   {discovery['charset']}")
         print(f"  collation: {discovery['collation']}")
     else:
@@ -250,7 +254,7 @@ def print_report(report):
         print(f"- {hypothesis}")
 
 
-def build_report(config):
+def build_report(config, target_name, env_prefix):
     default_cext = run_case("C Extension / default", config, use_pure=False)
     default_pure = run_case("Pure Python / default", config, use_pure=True)
     discovery = discover_explicit_settings(config)
@@ -293,6 +297,8 @@ def build_report(config):
             "python_version": sys.version,
             "platform": platform.platform(),
             "target": {
+                "name": target_name,
+                "environment_prefix": env_prefix,
                 "host": config["host"],
                 "port": config["port"],
                 "database": config["database"],
@@ -309,7 +315,23 @@ def build_report(config):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Compare mysql-connector-python C Extension and Pure Python paths against OceanBase."
+        description=(
+            "Compare mysql-connector-python C Extension and Pure Python paths "
+            "against a MySQL-compatible target."
+        )
+    )
+    parser.add_argument(
+        "--target-name",
+        default=os.environ.get("MYSQL_CONNECTOR_COMPAT_TARGET", "oceanbase"),
+        help="Label stored in output and JSON (default: oceanbase).",
+    )
+    parser.add_argument(
+        "--env-prefix",
+        default=os.environ.get("MYSQL_CONNECTOR_COMPAT_ENV_PREFIX", "OCEANBASE"),
+        help=(
+            "Prefix for HOST, PORT, USER, PASSWORD, and DATABASE environment "
+            "variables (default: OCEANBASE)."
+        ),
     )
     parser.add_argument(
         "--json",
@@ -322,8 +344,8 @@ def parse_args():
 
 def main():
     args = parse_args()
-    config = required_environment()
-    report = build_report(config)
+    config = required_environment(args.env_prefix)
+    report = build_report(config, args.target_name, args.env_prefix)
     print_report(report)
 
     if args.json_path:

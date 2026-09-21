@@ -166,26 +166,24 @@ uv run python dbt/run.py test --project-dir dbt --profiles-dir dbt
 - `stg_users`: usersの基本列を扱うstaging view
 - `user_summary`: ユーザー名ごとの件数と作成日時を集計するmart table
 
-### dbt-mysql互換性の検証結果
+## Compatibility Status
 
-OceanBase CE 4.4.2.1に対して `dbt-mysql 1.7.0` をそのまま実行すると、内部の `mysql-connector-python` がC拡張を選択し、OceanBaseから返る文字コードIDを処理できません。
+OceanBase CE 4.4.2.1に対して、現在のリポジトリで確認済みの結果です。未検証の組み合わせは含めていません。
 
-未修正の `uv run dbt` で確認されたエラー:
+| Client / Path | Connect | SELECT 1 | CRUD | Notes |
+|---|---|---|---|---|
+| PyMySQL | PASS | PASS | PASS | Dashboard、migration、Notebookで利用する既存アプリケーション経路 |
+| mysql-connector Pure Python | PASS | PASS | PASS | `use_pure=True`、default/explicitの両ケースで確認 |
+| mysql-connector C Extension | FAIL | - | - | default/explicitの両ケースで接続初期化中に失敗、調査継続中 |
+| dbt-mysql + compatibility workaround | PASS | PASS | PASS | Pure Pythonを明示的に強制し、`debug`、`run`、`test`に成功 |
 
-```text
-Character set '45' is not a compiled character set and is not specified in the '/usr/local/mysql/share/charsets/Index.xml' file
-_mysql_connector.MySQLInterfaceError: Malformed packet
-```
+### Production / Usability Path: dbt compatibility workaround
 
-失敗した接続処理では、mysql-connectorが次の形式のSQLを実行しようとした段階でエラーになりました。
+[dbt/run.py](dbt/run.py) は、現在検証しているOceanBase、dbt-mysql、mysql-connector-pythonの組み合わせでdbtを実用上動かすため、mysql-connectorへ `use_pure=True` を明示的に設定します。これは根本修正ではなく、site-packagesやdbt-mysql本体も変更しません。
 
-```sql
-SET NAMES '<charset_name>' COLLATE '<collation_name>';
-```
+このラッパーはC Extension接続を試してからPure Pythonへ切り替える自動fallbackではありません。最初からPure Python経路だけを選択し、原因調査は行いません。OceanBase用のdbtコマンドは、このラッパーから実行してください。
 
-`dbt/run.py` はdbt CLIを起動する前にmysql-connectorへ `use_pure=True` を設定し、C拡張ではなく純Python実装を使用します。site-packagesやdbt-mysql本体は変更しません。OceanBase用のdbtコマンドは必ずこのラッパーから実行してください。
-
-純Python実装を使った検証結果:
+確認済みの結果:
 
 ```text
 dbt debug: All checks passed
@@ -195,9 +193,28 @@ dbt test:  PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4
 
 `dbt run` により `test.stg_users` viewと `test.user_summary` tableが作成されます。Jupyter Notebookのdbt mart読み取りセルから `user_summary` をpandas DataFrameとして確認できます。
 
+### Research / Compatibility Path: observed failure
+
+OceanBase CE 4.4.2.1に対して `dbt-mysql 1.7.0` を通常実行すると、mysql-connector-pythonのC Extension経路が選択され、接続初期化中にcharset/collation関連のメッセージと `Malformed packet` が観測されます。同じ接続条件のPure Python経路は成功します。
+
+通常の `uv run dbt` で確認されたエラー:
+
+```text
+Character set '45' is not a compiled character set and is not specified in the '/usr/local/mysql/share/charsets/Index.xml' file
+_mysql_connector.MySQLInterfaceError: Malformed packet
+```
+
+tracebackには、接続初期化中にmysql-connectorが次の形式のSQLを実行する経路が含まれます。
+
+```sql
+SET NAMES '<charset_name>' COLLATE '<collation_name>';
+```
+
+これは観測された実行経路であり、このSQL、charset ID 45、OceanBase、mysql-connector-pythonのいずれかが直接原因だとは現時点で断定しません。OceanBaseとC Extension間のprotocol / metadata handlingのどの差分が失敗を引き起こすかは未特定です。
+
 ## MySQL Connector Compatibility Experiment
 
-`dbt-mysql`を介さず、`mysql-connector-python`だけでOceanBaseへ接続する最小実験を [experiments/mysql_connector_compat.py](experiments/mysql_connector_compat.py) に用意しています。この実験は、dbt-mysql、mysql-connector-python、C Extension、charset/collation negotiation、MySQL protocol compatibilityのどの層で結果が分かれるかを観測するためのものです。
+`dbt-mysql`を介さず、`mysql-connector-python`だけで接続する最小実験を [experiments/mysql_connector_compat.py](experiments/mysql_connector_compat.py) に用意しています。このResearch pathはC ExtensionとPure Pythonを独立して実行し、失敗を失敗のまま記録します。fallbackやworkaroundは行いません。
 
 接続情報は他のサンプルと同じ環境変数から読み込みます。
 
@@ -218,6 +235,25 @@ uv run python experiments/mysql_connector_compat.py \
    --json experiments/results/mysql_connector_compat.json
 ```
 
+`experiments/results/` は再現可能な互換性evidenceをGit管理する保存先です。実行環境、バージョン、例外、tracebackを含むため、結果を更新する場合は対象DBで再実行し、内容を確認してからコミットします。
+
+デフォルトは既存互換のためターゲット名`oceanbase`、環境変数prefix `OCEANBASE`です。別のMySQL互換ターゲットを比較する場合は、同じ5項目を任意のprefixで設定します。
+
+```bash
+export MYSQL8_HOST=127.0.0.1
+export MYSQL8_PORT=3306
+export MYSQL8_USER=experiment_user
+export MYSQL8_PASSWORD='...'
+export MYSQL8_DATABASE=experiment_db
+
+uv run python experiments/mysql_connector_compat.py \
+   --target-name mysql8 \
+   --env-prefix MYSQL8 \
+   --json experiments/results/mysql8.json
+```
+
+上記は将来の比較方法を示す例であり、このリポジトリではMySQL 8.xに対する結果をまだ検証していません。
+
 実験は次の4ケースを独立して実行し、失敗時に別の実装へfallbackしません。
 
 - C Extension / charsetとcollationの指定なし
@@ -227,7 +263,7 @@ uv run python experiments/mysql_connector_compat.py \
 
 明示するcharset/collationは固定値ではありません。Pure Pythonの接続からセッション変数を取得し、`SHOW COLLATION`の結果に存在することを確認してから使用します。各接続成功後に `SELECT VERSION()`、セッションのcharset/collation、`SELECT 1`、実験専用テーブルによるCREATE/INSERT/SELECT/DROPを実行します。
 
-### 観測された事実
+### FACT: 観測された事実
 
 - `mysql-connector-python 26.7.0`のC Extension (`use_pure=False`) は、通常クエリを実行できる接続オブジェクトが返る前に `Malformed packet` で失敗した
 - Pure Python (`use_pure=True`) は接続、`SELECT 1`、最小CRUD、cleanupに成功した
@@ -235,7 +271,7 @@ uv run python experiments/mysql_connector_compat.py \
 - 同じ明示値を使ったPure Pythonは接続とクエリに成功した
 - この再現コードはdbtをimportまたは実行していない
 
-### 仮説
+### HYPOTHESIS: 未検証の説明候補
 
 - 失敗はcharset/collation negotiationまたはMySQL protocol metadataの処理に関係する可能性がある
 - C ExtensionとPure Pythonにおけるprotocol処理の差が結果へ影響している可能性がある
