@@ -17,3 +17,7 @@ agent_state.db
 .venv
 seekdb.db
 
+# dbt generated files
+dbt/target
+dbt/logs
+

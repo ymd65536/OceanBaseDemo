@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: operational
+    database: "{{ env_var('OCEANBASE_DATABASE') }}"
+    schema: "{{ env_var('OCEANBASE_DATABASE') }}"
+    tables:
+      - name: users
+        description: "MySQLからOceanBaseへ移行されたOperational Data"
+        columns:
+          - name: id
+            tests:
+              - not_null
+              - unique
+          - name: name
+            tests:
+              - not_null
+          - name: created_at
+            tests:
+              - not_null

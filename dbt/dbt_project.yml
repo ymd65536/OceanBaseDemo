@@ -1,0 +1,14 @@
+name: oceanbase_lab
+version: 1.0.0
+config-version: 2
+
+profile: oceanbase_lab
+
+model-paths: [models]
+
+models:
+  oceanbase_lab:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

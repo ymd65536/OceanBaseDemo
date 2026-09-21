@@ -1,0 +1,13 @@
+oceanbase_lab:
+  target: dev
+  outputs:
+    dev:
+      type: mysql
+      server: "{{ env_var('OCEANBASE_HOST') }}"
+      port: "{{ env_var('OCEANBASE_PORT') | int }}"
+      database: "{{ env_var('OCEANBASE_DATABASE') }}"
+      schema: "{{ env_var('OCEANBASE_DATABASE') }}"
+      username: "{{ env_var('OCEANBASE_USER') }}"
+      password: "{{ env_var('OCEANBASE_PASSWORD') }}"
+      ssl_disabled: true
+      threads: 1

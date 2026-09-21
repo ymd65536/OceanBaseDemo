@@ -133,6 +133,70 @@ uv run voila notebooks/oceanbase_quickstart.ipynb \
 
 CodespacesのPortsタブでポート `8866` を開くと、OceanBaseのバージョン、usersの一覧、集計結果、グラフをWeb画面で確認できます。Notebookのコードを変更した場合は、Voilàを再起動して変更を反映してください。
 
+## dbtによるAnalyticsテーブル作成
+
+`dbt-mysql`を使って、OceanBaseのOperational DataからAnalytics用のstaging viewとmart tableを作成します。dbtのプロフィールは [dbt/profiles.yml](dbt/profiles.yml) にありますが、接続情報はすべて環境変数から読み込みます。パスワードをファイルへ直接書かないでください。
+
+### dbtの実行
+
+まず、DashboardやJupyterLabと同じ環境変数を設定します。
+
+```bash
+export OCEANBASE_HOST=127.0.0.1
+export OCEANBASE_PORT=2881
+export OCEANBASE_USER='root@sys'
+export OCEANBASE_PASSWORD=''
+export OCEANBASE_DATABASE=test
+```
+
+dbtプロジェクトの設定とOceanBaseへの接続を確認します。
+
+```bash
+uv run python dbt/run.py debug --project-dir dbt --profiles-dir dbt
+```
+
+接続互換性を確認したあと、モデル作成とテストを実行します。
+
+```bash
+uv run python dbt/run.py run --project-dir dbt --profiles-dir dbt
+uv run python dbt/run.py test --project-dir dbt --profiles-dir dbt
+```
+
+モデルは次の構成です。
+
+- `operational.users`: 移行済みの `users` テーブルをsourceとして定義
+- `stg_users`: usersの基本列を扱うstaging view
+- `user_summary`: ユーザー名ごとの件数と作成日時を集計するmart table
+
+### dbt-mysql互換性の検証結果
+
+OceanBase CE 4.4.2.1に対して `dbt-mysql 1.7.0` をそのまま実行すると、内部の `mysql-connector-python` がC拡張を選択し、OceanBaseから返る文字コードIDを処理できません。
+
+未修正の `uv run dbt` で確認されたエラー:
+
+```text
+Character set '45' is not a compiled character set and is not specified in the '/usr/local/mysql/share/charsets/Index.xml' file
+_mysql_connector.MySQLInterfaceError: Malformed packet
+```
+
+失敗した接続処理では、mysql-connectorが次の形式のSQLを実行しようとした段階でエラーになりました。
+
+```sql
+SET NAMES '<charset_name>' COLLATE '<collation_name>';
+```
+
+`dbt/run.py` はdbt CLIを起動する前にmysql-connectorへ `use_pure=True` を設定し、C拡張ではなく純Python実装を使用します。site-packagesやdbt-mysql本体は変更しません。OceanBase用のdbtコマンドは必ずこのラッパーから実行してください。
+
+純Python実装を使った検証結果:
+
+```text
+dbt debug: All checks passed
+dbt run:   PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2
+dbt test:  PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4
+```
+
+`dbt run` により `test.stg_users` viewと `test.user_summary` tableが作成されます。Jupyter Notebookのdbt mart読み取りセルから `user_summary` をpandas DataFrameとして確認できます。
+
 使い方はローカル/ クラウドのどちらかで利用できる。クイックスタートはローカル版
 
 - [quick start](https://jp.oceanbase.com/docs/common-oceanbase-database-1000000000011372)
