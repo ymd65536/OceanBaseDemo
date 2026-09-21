@@ -10,4 +10,5 @@ dependencies = [
     "pandas>=2.2.0",
     "pymysql>=1.1.2",
     "pyseekdb>=1.4.0",
+    "voila>=0.5.8",
 ]

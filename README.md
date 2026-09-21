@@ -112,6 +112,27 @@ uv run jupyter lab \
 
 CodespacesのPortsタブでポート `8888` を開き、表示されたJupyterLabのURLへアクセスしてください。Notebook一覧から `notebooks/oceanbase_quickstart.ipynb` を開き、上から順番にセルを実行します。NotebookではOceanBaseへの接続、`SELECT VERSION()`、`users` の取得、pandasによる集計、matplotlibによる可視化を確認できます。
 
+## NotebookをWebアプリとして表示
+
+Voilàを使うと、Notebookのコードセルを表示せず、実行結果をWebアプリとして配信できます。Voilàは起動したプロセスの環境変数を使うため、別のターミナルで起動する場合も、先にDashboardと同じ接続情報を設定してください。
+
+```bash
+export OCEANBASE_HOST=127.0.0.1
+export OCEANBASE_PORT=2881
+export OCEANBASE_USER='root@sys'
+export OCEANBASE_PASSWORD=''
+export OCEANBASE_DATABASE=test
+
+uv run voila notebooks/oceanbase_quickstart.ipynb \
+   --Voila.ip=0.0.0.0 \
+   --port=8866 \
+   --no-browser
+```
+
+環境変数が不足している場合は、Notebookの接続セルで不足している変数名を表示して停止します。パスワードなどの接続情報はソースコードへ書き込まないでください。
+
+CodespacesのPortsタブでポート `8866` を開くと、OceanBaseのバージョン、usersの一覧、集計結果、グラフをWeb画面で確認できます。Notebookのコードを変更した場合は、Voilàを再起動して変更を反映してください。
+
 使い方はローカル/ クラウドのどちらかで利用できる。クイックスタートはローカル版
 
 - [quick start](https://jp.oceanbase.com/docs/common-oceanbase-database-1000000000011372)
