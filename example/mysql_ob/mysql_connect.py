@@ -35,6 +35,9 @@ for row in src.fetchall():
         """
         INSERT INTO users (id, name, created_at)
         VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            created_at = VALUES(created_at)
         """,
         (row["id"], row["name"], row["created_at"]),
     )
