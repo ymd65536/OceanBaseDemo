@@ -278,6 +278,67 @@ uv run python experiments/mysql_connector_compat.py \
 
 この実験結果だけでは、OceanBase、mysql-connector-python、dbt-mysqlのいずれかに原因があるとは断定しません。標準出力とJSONに残る例外、traceback、セッション情報を追加調査の材料として扱います。
 
+### MySQL 8.x Control Experiment
+
+OceanBaseとは別に、固定バージョン`mysql:8.0.46`をDocker Composeで起動し、同じPython環境、mysql-connector-python、experiment runnerで比較できます。既存のOceanBase 2881番とMySQL 3306番を変更せず、control targetは3307番を使用します。
+
+ローカルcredentialファイルを作成し、値を必要に応じて変更します。`experiments/mysql8/.env`は`.gitignore`対象であり、commitしません。
+
+```bash
+cp experiments/mysql8/.env.example experiments/mysql8/.env
+```
+
+MySQL 8.0.46と専用database/userを起動します。
+
+```bash
+docker compose \
+   --env-file experiments/mysql8/.env \
+   -f experiments/mysql8/compose.yaml \
+   up -d --wait
+```
+
+同じ環境変数を現在のシェルへ読み込み、4ケースを実行します。
+
+```bash
+set -a
+source experiments/mysql8/.env
+set +a
+
+uv run python experiments/mysql_connector_compat.py \
+   --target-name mysql8 \
+   --env-prefix MYSQL8 \
+   --json experiments/results/mysql8.json
+```
+
+記録済みのOceanBaseとMySQL 8.xの結果だけから比較表を再生成します。
+
+```bash
+uv run python experiments/compare_results.py \
+   experiments/results/mysql_connector_compat.json \
+   experiments/results/mysql8.json \
+   --output experiments/results/comparison.md
+```
+
+実測結果は [experiments/results/comparison.md](experiments/results/comparison.md) に保存しています。
+
+| Case | OceanBase CE 4.4.2.1 | MySQL 8.0.46 |
+|---|---|---|
+| C Extension / default | FAIL / - / - | PASS / PASS / PASS |
+| Pure Python / default | PASS / PASS / PASS | PASS / PASS / PASS |
+| C Extension / explicit | FAIL / - / - | PASS / PASS / PASS |
+| Pure Python / explicit | PASS / PASS / PASS | PASS / PASS / PASS |
+
+各セルは`Connect / SELECT 1 / CRUD`です。このcontrol experimentではMySQL 8.0.46の4ケースがすべてPASSしました。これは同じclient環境でDB serverを変えると結果が異なるという観測事実ですが、OceanBase側またはmysql-connector-python側のbugを断定するものではありません。
+
+control targetを停止するには次を実行します。データvolumeも削除して初期状態へ戻す場合だけ`--volumes`を追加してください。
+
+```bash
+docker compose \
+   --env-file experiments/mysql8/.env \
+   -f experiments/mysql8/compose.yaml \
+   down
+```
+
 使い方はローカル/ クラウドのどちらかで利用できる。クイックスタートはローカル版
 
 - [quick start](https://jp.oceanbase.com/docs/common-oceanbase-database-1000000000011372)
