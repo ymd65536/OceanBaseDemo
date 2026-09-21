@@ -195,6 +195,53 @@ dbt test:  PASS=4 WARN=0 ERROR=0 SKIP=0 TOTAL=4
 
 `dbt run` により `test.stg_users` viewと `test.user_summary` tableが作成されます。Jupyter Notebookのdbt mart読み取りセルから `user_summary` をpandas DataFrameとして確認できます。
 
+## MySQL Connector Compatibility Experiment
+
+`dbt-mysql`を介さず、`mysql-connector-python`だけでOceanBaseへ接続する最小実験を [experiments/mysql_connector_compat.py](experiments/mysql_connector_compat.py) に用意しています。この実験は、dbt-mysql、mysql-connector-python、C Extension、charset/collation negotiation、MySQL protocol compatibilityのどの層で結果が分かれるかを観測するためのものです。
+
+接続情報は他のサンプルと同じ環境変数から読み込みます。
+
+```bash
+export OCEANBASE_HOST=127.0.0.1
+export OCEANBASE_PORT=2881
+export OCEANBASE_USER='root@sys'
+export OCEANBASE_PASSWORD=''
+export OCEANBASE_DATABASE=test
+
+uv run python experiments/mysql_connector_compat.py
+```
+
+完全な結果をJSONへ保存する場合は `--json` を指定します。保存される接続情報のパスワードは `<redacted>` に置き換えられます。
+
+```bash
+uv run python experiments/mysql_connector_compat.py \
+   --json experiments/results/mysql_connector_compat.json
+```
+
+実験は次の4ケースを独立して実行し、失敗時に別の実装へfallbackしません。
+
+- C Extension / charsetとcollationの指定なし
+- Pure Python / charsetとcollationの指定なし
+- C Extension / charsetとcollationを明示
+- Pure Python / charsetとcollationを明示
+
+明示するcharset/collationは固定値ではありません。Pure Pythonの接続からセッション変数を取得し、`SHOW COLLATION`の結果に存在することを確認してから使用します。各接続成功後に `SELECT VERSION()`、セッションのcharset/collation、`SELECT 1`、実験専用テーブルによるCREATE/INSERT/SELECT/DROPを実行します。
+
+### 観測された事実
+
+- `mysql-connector-python 26.7.0`のC Extension (`use_pure=False`) は、通常クエリを実行できる接続オブジェクトが返る前に `Malformed packet` で失敗した
+- Pure Python (`use_pure=True`) は接続、`SELECT 1`、最小CRUD、cleanupに成功した
+- OceanBaseセッションから取得したcharset/collationを明示しても、今回のC Extensionの結果は失敗のままだった
+- 同じ明示値を使ったPure Pythonは接続とクエリに成功した
+- この再現コードはdbtをimportまたは実行していない
+
+### 仮説
+
+- 失敗はcharset/collation negotiationまたはMySQL protocol metadataの処理に関係する可能性がある
+- C ExtensionとPure Pythonにおけるprotocol処理の差が結果へ影響している可能性がある
+
+この実験結果だけでは、OceanBase、mysql-connector-python、dbt-mysqlのいずれかに原因があるとは断定しません。標準出力とJSONに残る例外、traceback、セッション情報を追加調査の材料として扱います。
+
 使い方はローカル/ クラウドのどちらかで利用できる。クイックスタートはローカル版
 
 - [quick start](https://jp.oceanbase.com/docs/common-oceanbase-database-1000000000011372)
