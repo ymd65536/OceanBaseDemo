@@ -1,6 +1,6 @@
-import mysql.connector
+import pymysql
 
-conn = mysql.connector.connect(
+conn = pymysql.connect(
     host="127.0.0.1",
     port=2881,
     user="root@sys",
