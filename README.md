@@ -23,6 +23,51 @@
 
 ## How to use
 
+## Python環境のセットアップ
+
+このリポジトリのサンプルを実行するには、Python 3.12以上と `pip` が必要です。Ubuntu/Debian系の環境では、以下のコマンドでPythonと `pip` をインストールします。
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-pip
+```
+
+依存関係の管理には `uv` を使用します。まず `pip` で `uv` をインストールしてください。
+
+```bash
+python3 -m pip install --user uv
+```
+
+ディストリビューションがPEP 668の `externally-managed-environment` エラーを表示する場合は、ユーザー領域へのインストールであることを確認したうえで、次のコマンドを使用します。
+
+```bash
+python3 -m pip install --user --break-system-packages uv
+```
+
+`uv` のインストール先がPATHに含まれていない場合は、次のコマンドで追加してください。
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+その後、リポジトリのルートで `uv sync` を実行すると、`.venv` の作成と `uv.lock` に固定された依存関係のインストールが行われます。
+
+```bash
+uv sync
+```
+
+環境を有効化する場合は、次のコマンドを実行します。
+
+```bash
+source .venv/bin/activate
+```
+
+仮想環境を有効化せずにサンプルを実行する場合は、`uv run` を使用できます。
+
+```bash
+uv run python main.py
+```
+
 使い方はローカル/ クラウドのどちらかで利用できる。クイックスタートはローカル版
 
 - [quick start](https://jp.oceanbase.com/docs/common-oceanbase-database-1000000000011372)
