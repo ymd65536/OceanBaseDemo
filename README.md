@@ -68,6 +68,25 @@ source .venv/bin/activate
 uv run python main.py
 ```
 
+## OceanBase Dashboard
+
+OceanBase CEの `users` テーブルをブラウザで確認する開発者向けDashboardを起動できます。DB接続情報は環境変数から読み込みます。
+
+```bash
+export OCEANBASE_HOST=127.0.0.1
+export OCEANBASE_PORT=2881
+export OCEANBASE_USER='root@sys'
+export OCEANBASE_PASSWORD=''
+export OCEANBASE_DATABASE=test
+export WEB_PORT=8000
+
+uv run python example/dashboard/dashboard.py
+```
+
+サーバーは `0.0.0.0:8000` で待ち受けるため、CodespacesのPortsタブでポート `8000` を開いてブラウザからアクセスできます。画面の `Refresh` を押すと、OceanBaseへ再接続して `VERSION()`、`users` の件数、レコード一覧を再取得します。
+
+接続に失敗した場合は、接続状態を `Connection error` として表示し、エラー内容を画面に表示します。DashboardのSQLは固定クエリのみで、ユーザー入力をSQLへ連結しません。
+
 使い方はローカル/ クラウドのどちらかで利用できる。クイックスタートはローカル版
 
 - [quick start](https://jp.oceanbase.com/docs/common-oceanbase-database-1000000000011372)
